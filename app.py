@@ -1,23 +1,36 @@
 import heapq
-import time
 import random
+import logging
 from math import radians, sin, cos, sqrt, atan2, exp
 import math
+from typing import Dict, List, Tuple, Optional
 from flask import Flask, render_template, request, jsonify
+
+# Configuración de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Constantes configurables
+N_VECINOS_MAS_CERCANOS = 4
+DEFAULT_PROB_SOLEADO = 0.8
+DEFAULT_CORRELATION_RADIUS_KM = 0.5
+DEFAULT_RAIN_PENALTY = 3.0
 
 # --- 1. FUNCIONES DE CÁLCULO (Distancia y Tiempo) ---
 
 def haversine(coord1, coord2):
+    """Calcula la distancia en kilómetros entre dos coordenadas (lat, lon) usando Haversine."""
     R = 6371.0
-    lat1, lon1 = radians(coord1[0]), radians(coord1[1]) 
+    lat1, lon1 = radians(coord1[0]), radians(coord1[1])
     lat2, lon2 = radians(coord2[0]), radians(coord2[1])
     dlon = lon2 - lon1
     dlat = lat2 - lat1
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return R * c
 
-def km_a_minutos_caminando(km, velocidad_kmh=5.0):
+def km_a_minutos_caminando(km: float, velocidad_kmh: float = 5.0) -> float:
+    """Convierte kilómetros a minutos caminando dada una velocidad en km/h."""
     return (km / velocidad_kmh) * 60.0
 
 # --- 2. TUS 21 COORDENADAS ---
@@ -45,42 +58,40 @@ coordenadas_lugares = {
     'CIAM-Pampas': [-12.396174363986217, -74.869379794405],
 }
 
-# --- 3. MODIFICADO: GENERACIÓN DEL `mapa_turistico` (Red de Caminos) ---
-# Ahora solo conectamos cada lugar con sus 4 vecinos más cercanos.
+def generar_mapa_turistico(coordenadas: Dict[str, Tuple[float, float]], n_vecinos: int = N_VECINOS_MAS_CERCANOS) -> Dict[str, Dict[str, float]]:
+    """Genera un grafo (diccionario) que conecta cada lugar con sus n vecinos más cercanos.
 
-print("Generando red de caminos realista...")
-lugares = list(coordenadas_lugares.keys())
-mapa_turistico = {lugar: {} for lugar in lugares}
-N_VECINOS_MAS_CERCANOS = 4 # Puedes cambiar este número (4 o 5 es bueno)
+    Retorna: mapa_turistico: {lugar: {vecino: costo_minutos, ...}, ...}
+    """
+    logger.info("Generando red de caminos realista...")
+    lugares = list(coordenadas.keys())
+    mapa = {lugar: {} for lugar in lugares}
 
-for lugar_origen in lugares:
-    # 1. Calcular la distancia a todos los demás lugares
-    distancias_vecinos = []
-    for lugar_destino in lugares:
-        if lugar_origen == lugar_destino:
-            continue
-        
-        coord_a = coordenadas_lugares[lugar_origen]
-        coord_b = coordenadas_lugares[lugar_destino]
-        
-        dist_km = haversine(coord_a, coord_b)
-        dist_min = km_a_minutos_caminando(dist_km)
-        distancias_vecinos.append((dist_min, lugar_destino))
-    
-    # 2. Ordenar por distancia (más cercano primero)
-    distancias_vecinos.sort()
-    
-    # 3. Añadir solo los N vecinos más cercanos al mapa
-    for i in range(N_VECINOS_MAS_CERCANOS):
-        if i < len(distancias_vecinos):
-            costo = distancias_vecinos[i][0]
-            vecino = distancias_vecinos[i][1]
-            
-            # Añadir la conexión en ambos sentidos
-            mapa_turistico[lugar_origen][vecino] = costo
-            mapa_turistico[vecino][lugar_origen] = costo
+    for lugar_origen in lugares:
+        distancias_vecinos = []
+        for lugar_destino in lugares:
+            if lugar_origen == lugar_destino:
+                continue
+            coord_a = coordenadas[lugar_origen]
+            coord_b = coordenadas[lugar_destino]
+            dist_km = haversine(coord_a, coord_b)
+            dist_min = km_a_minutos_caminando(dist_km)
+            distancias_vecinos.append((dist_min, lugar_destino))
 
-print(f"Red de caminos generada conectando los {N_VECINOS_MAS_CERCANOS} vecinos más cercanos.")
+        distancias_vecinos.sort()
+        for i in range(n_vecinos):
+            if i < len(distancias_vecinos):
+                costo = distancias_vecinos[i][0]
+                vecino = distancias_vecinos[i][1]
+                mapa[lugar_origen][vecino] = costo
+                mapa[vecino][lugar_origen] = costo
+
+    logger.info(f"Red de caminos generada conectando los {n_vecinos} vecinos más cercanos.")
+    return mapa
+
+
+# Generar el mapa al iniciar (mantener compatibilidad con el resto del código)
+mapa_turistico = generar_mapa_turistico(coordenadas_lugares, N_VECINOS_MAS_CERCANOS)
 
 # --- 4. Generador de Heurística Dinámica (Sin cambios) ---
 def generar_heuristica_dinamica(destino):
