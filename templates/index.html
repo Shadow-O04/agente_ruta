@@ -330,14 +330,22 @@
                     infoRuta.innerHTML = `<p class="ruta-error">${data.error}</p>`;
                 } else if (data.ruta) {
                     const listaResultados = document.createElement('ul');
+                    // Mostrar costo formateado: preferir `costo_minutos` si existe
+                    const costoMostrar = (data.costo_minutos !== undefined && data.costo_minutos !== null)
+                        ? data.costo_minutos
+                        : (data.costo !== undefined && data.costo !== null) ? Number(data.costo).toFixed(2) : 'N/A';
+                    const nodosMostrar = (data.nodos_explorados !== undefined && data.nodos_explorados !== null)
+                        ? data.nodos_explorados
+                        : (data.nodos !== undefined && data.nodos !== null) ? data.nodos : 'N/A';
+
                     listaResultados.innerHTML = `
                         <li>
                             <strong>Costo (minutos):</strong>
-                            <span>${data.costo}</span>
+                            <span>${costoMostrar}</span>
                         </li>
                         <li>
                             <strong>Nodos Explorados:</strong>
-                            <span>${data.nodos_explorados}</span>
+                            <span>${nodosMostrar}</span>
                         </li>
                     `;
                     
