@@ -1,0 +1,61 @@
+/* static/style.css */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+header {
+    text-align: center;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    color: #004085;
+}
+.controles {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+select, button {
+    font-size: 1rem;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border: none;
+}
+button:hover {
+    background-color: #0056b3;
+}
+#resultados {
+    margin-top: 20px;
+}
+#consola-salida {
+    background-color: #282c34; /* Color de consola oscuro */
+    color: #61dafb; /* Texto celeste */
+    padding: 20px;
+    border-radius: 8px;
+    font-family: "Courier New", Courier, monospace;
+    white-space: pre-wrap; /* Para que el texto se ajuste */
+    min-height: 100px;
+}
+
+/* --- NUEVO: Estilos para Marcadores de Leaflet --- */
+.marker-pin {
+    width: 10px;
+    height: 10px;
+    border-radius: 50% 50% 50% 0;
+    border: 1px solid white;
+    transform: rotate(-45deg);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}

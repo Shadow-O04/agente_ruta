@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agente de Rutas Turísticas de Pampas</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding-bottom: 10px;
+            color: #212529;
+            border-bottom: 2px solid #dee2e6;
+        }
+        header h1 {
+            font-weight: 600;
+        }
+
+        /* --- Layout de 2 Columnas --- */
+        .page-container {
+            display: flex;
+            flex-wrap: wrap; 
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .data-column {
+            flex: 1;
+            min-width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px; 
+        }
+        .map-column {
+            flex: 1.2;
+            min-width: 350px;
+        }
+        
+        /* --- Estructura de Panel Profesional --- */
+        .panel {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e9ecef;
+            padding: 0; 
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            background-color: #f8f9fa;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .panel-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #343a40;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+        /* --- Fin de la estructura --- */
+
+
+        /* --- 1. Panel de Controles --- */
+        .controles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .controles label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #495057;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .controles select {
+            width: 100%;
+            font-size: 1rem;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+        .controles button {
+            grid-column: 1 / -1;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 5px;
+            border: none;
+            background-color: #0056b3;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .controles button:hover {
+            background-color: #004085;
+        }
+
+        /* --- 2. Panel de Mapa --- */
+        #map { 
+            height: 75vh;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            min-height: 500px;
+        }
+        
+        /* Marcadores de Emoticon */
+        .map-emoji-icon {
+            background: none;
+            border: none;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .map-emoji-icon-content {
+            font-size: 26px;
+        }
+
+        /* --- 3. Paneles de Datos --- */
+        #panel-clima {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* MODIFICADO: Panel de Ruta ahora está abajo */
+        #panel-ruta {
+            margin-top: 50px; /* Separación de las columnas de arriba */
+            max-height: 300px; /* Altura máxima para scroll */
+            overflow-y: auto; /* Habilitar scroll si es necesario */
+        }
+        
+        .panel-body ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .panel-body li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .panel-body li:last-child {
+            border-bottom: none;
+        }
+
+        /* Icono de clima en el panel */
+        .clima-icono-panel {
+            margin-right: 10px;
+            font-size: 1.3rem;
+            width: 30px;
+            text-align: center;
+        }
+        
+        .placeholder {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        #info-ruta ul li {
+            justify-content: space-between;
+        }
+        #info-ruta strong {
+            color: #343a40;
+        }
+        #info-ruta .ruta-pasos {
+            font-weight: 600;
+            color: #0056b3;
+            font-size: 1.1rem;
+        }
+        .ruta-error { font-weight: 600; color: #dc3545; }
+        
+        /* ELIMINADO: Estilos de la consola JSON */
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>AGENTE DE RUTAS TURISTICAS DE PAMPAS</h1>
+    </header>
+
+    <main>
+        <div class="page-container">    
+
+            <div class="data-column">
+                
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Configuración de Ruta</h3>
+                    </div>
+                    <div class="panel-body controles">
+                        <label for="inicio">Punto de Inicio:</label>
+                        <select id="inicio">
+                            {% for lugar in lugares %}
+                                <option value="{{ lugar }}">{{ lugar }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label for="destino">Punto de Destino:</label>
+                        <select id="destino">
+                            {% for lugar in lugares %}
+                                <option value="{{ lugar }}">{{ lugar }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button id="btnBuscar">Buscar Ruta</button>
+                    </div>
+                </div>
+
+                <div id="panel-clima" class="panel">
+                    <div class="panel-header">
+                        <h3>Pronóstico del Clima</h3>
+                    </div>
+                    <div class="panel-body">
+                        <ul id="lista-clima">
+                            <li class="placeholder">Esperando simulación...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                </div> <div class="map-column">
+                <div id="map"></div>
+            </div>
+
+        </div> <div id="panel-ruta" class="panel">
+            <div class="panel-header">
+                <h3>Ruta Detallada</h3>
+            </div>
+            <div id="info-ruta" class="panel-body">
+                    <p class="placeholder">Los detalles de la ruta aparecerán aquí.</p>
+            </div>
+        </div>
+
+        </main>
+
+    <script>
+        // 1. Obtener los elementos del DOM
+        const btnBuscar = document.getElementById('btnBuscar');
+        const selectInicio = document.getElementById('inicio');
+        const selectDestino = document.getElementById('destino');
+        // ELIMINADO: const consola
+        const listaClima = document.getElementById('lista-clima');
+        const infoRuta = document.getElementById('info-ruta');
+
+        const coordenadas =  {{ coordenadas | tojson }};
+
+        // 3. Inicializar el Mapa
+        const map = L.map('map').setView([-12.395, -74.8672], 14); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let marcadoresLayer = L.layerGroup().addTo(map);
+        let rutaLayer = L.layerGroup().addTo(map);
+
+        // 4. Marcadores de Emoticon
+        function dibujarMarcadoresClima(climaInfo = {}) {
+            marcadoresLayer.clearLayers(); 
+            for (const [lugar, coord] of Object.entries(coordenadas)) {
+                const clima = climaInfo[lugar] || 'soleado'; 
+                const iconoEmoji = (clima === 'lluvioso') ? '🌧️' : '☀️';
+                const icono = L.divIcon({
+                    html: `<span class="map-emoji-icon-content">${iconoEmoji}</span>`,
+                    className: 'map-emoji-icon',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15] 
+                });
+                L.marker(coord, { icon: icono }).addTo(marcadoresLayer)
+                    .bindPopup(`<b>${lugar}</b><br>Estado: ${clima.charAt(0).toUpperCase() + clima.slice(1)}`);
+            }
+        }
+        
+        dibujarMarcadoresClima();
+
+        // 5. Event Listener del Botón
+        btnBuscar.addEventListener('click', async () => {
+            const inicio = selectInicio.value;
+            const destino = selectDestino.value;
+
+            // Limpiar resultados anteriores
+            // ELIMINADO: consola.textContent
+            listaClima.innerHTML = "<li class='placeholder'>Actualizando...</li>";
+            infoRuta.innerHTML = "<p class='placeholder'>Calculando...</p>";
+            rutaLayer.clearLayers(); 
+
+            if (inicio === destino) {
+                const errorMsg = "Error: El inicio y el destino no pueden ser el mismo.";
+                // ELIMINADO: consola.textContent
+                infoRuta.innerHTML = `<p class="ruta-error">${errorMsg}</p>`;
+                listaClima.innerHTML = `<li class="ruta-error">${errorMsg}</li>`;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/calcular_ruta?inicio=${encodeURIComponent(inicio)}&destino=${encodeURIComponent(destino)}`);
+                const data = await response.json();
+
+                // ELIMINADO: consola.textContent = JSON.stringify(data, null, 2);
+
+                // 8. Poblar el panel de Clima
+                listaClima.innerHTML = "";
+                for (const [lugar, clima] of Object.entries(data.clima)) {
+                    const icono = (clima === 'lluvioso') ? '🌧️' : '☀️';
+                    const item = document.createElement('li');
+                    item.innerHTML = `<span class="clima-icono-panel">${icono}</span> ${lugar}`;
+                    listaClima.appendChild(item);
+                }
+
+                // 9. Poblar el panel de Ruta Detallada
+                infoRuta.innerHTML = "";
+                if (data.error) {
+                    infoRuta.innerHTML = `<p class="ruta-error">${data.error}</p>`;
+                } else if (data.ruta) {
+                    const listaResultados = document.createElement('ul');
+                    listaResultados.innerHTML = `
+                        <li>
+                            <strong>Costo (minutos):</strong>
+                            <span>${data.costo}</span>
+                        </li>
+                        <li>
+                            <strong>Nodos Explorados:</strong>
+                            <span>${data.nodos_explorados}</span>
+                        </li>
+                    `;
+                    
+                    const pasosHeader = document.createElement('h4');
+                    pasosHeader.innerText = 'Pasos de la Ruta:';
+                    pasosHeader.style.marginTop = '15px';
+                    pasosHeader.style.marginBottom = '5px';
+                    
+                    const pasosRuta = document.createElement('p');
+                    pasosRuta.className = 'ruta-pasos';
+                    pasosRuta.innerHTML = data.ruta.join(' &rarr; ');
+
+                    infoRuta.appendChild(listaResultados);
+                    infoRuta.appendChild(pasosHeader);
+                    infoRuta.appendChild(pasosRuta);
+                }
+
+                // 10. Actualizar marcadores del mapa
+                dibujarMarcadoresClima(data.clima);
+
+                // 11. Dibujar la ruta
+                if (data.ruta_coords) {
+                    const polyline = L.polyline(data.ruta_coords, {
+                        color: '#0056b3',
+                        weight: 5
+                    }).addTo(rutaLayer);
+                    map.fitBounds(polyline.getBounds().pad(0.1));
+                }
+
+            } catch (error) {
+                console.error('Error al llamar a la API:', error);
+                const errorMsg = 'Error en la conexión con el servidor.';
+                infoRuta.innerHTML = `<p class="ruta-error">${errorMsg}</p>`;
+                listaClima.innerHTML = `<li class="ruta-error">${errorMsg}</li>`;
+            }
+        });
+    </script>
+</body>
+</html>
